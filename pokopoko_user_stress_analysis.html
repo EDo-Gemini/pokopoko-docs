@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>포코포코 유저 스트레스 경향성 분석</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f5f0;
+  --bg2: #ffffff;
+  --surface: #ffffff;
+  --surface-alt: #f0f0eb;
+  --border: #d4d4cc;
+  --border-light: #e8e8e2;
+  --text: #1a1a1a;
+  --text-sub: #444444;
+  --text-dim: #777777;
+  --accent: #2563eb;
+  --accent-light: #dbeafe;
+  --danger: #dc2626;
+  --danger-light: #fee2e2;
+  --danger-bg: #fef2f2;
+  --warn: #d97706;
+  --warn-light: #fef3c7;
+  --success: #059669;
+  --success-light: #d1fae5;
+  --hot: #dc2626;
+  --cold: #2563eb;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.75;
+  font-size: 15px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* === LAYOUT === */
+.app {
+  display: flex;
+  height: 100vh;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.sidebar-header {
+  padding: 24px 20px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+.sidebar-header .logo {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.sidebar-header .title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+.sidebar-nav {
+  padding: 8px 0;
+  flex: 1;
+}
+.sidebar-nav .nav-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 20px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: all 0.15s;
+}
+.sidebar-nav .nav-item:hover {
+  background: var(--surface-alt);
+}
+.sidebar-nav .nav-item.active {
+  background: var(--accent-light);
+  border-left-color: var(--accent);
+}
+.sidebar-nav .nav-item .num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  min-width: 22px;
+  padding-top: 2px;
+}
+.sidebar-nav .nav-item.active .num { color: var(--accent); }
+.sidebar-nav .nav-item .label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-sub);
+  line-height: 1.4;
+}
+.sidebar-nav .nav-item.active .label { color: var(--accent); font-weight: 700; }
+
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-light);
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* MAIN */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+}
+.tab-content {
+  display: none;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 48px 48px 80px;
+}
+.tab-content.active { display: block; }
+
+/* PAGE NAV */
+.page-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-light);
+}
+.page-nav button {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text-sub);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.page-nav button:hover { border-color: var(--accent); color: var(--accent); }
+.page-nav button.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.page-nav button.primary:hover { background: #1d4ed8; }
+
+/* === TYPOGRAPHY === */
+.section-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+h2 {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  margin-bottom: 8px;
+  line-height: 1.3;
+  color: var(--text);
+}
+h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 36px 0 12px;
+  color: var(--text);
+}
+p { color: var(--text-sub); margin-bottom: 14px; }
+p strong { color: var(--text); font-weight: 700; }
+.divider {
+  width: 48px;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  margin: 12px 0 24px;
+}
+
+/* === COMPONENTS === */
+
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 24px;
+  margin: 20px 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.card.accent { border-left: 4px solid var(--accent); background: #f8faff; }
+.card.danger { border-left: 4px solid var(--danger); background: var(--danger-bg); }
+.card.warn { border-left: 4px solid var(--warn); background: #fffbeb; }
+.card.success { border-left: 4px solid var(--success); background: #f0fdf4; }
+.card-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 10px;
+}
+.card-label.blue { color: var(--accent); }
+.card-label.red { color: var(--danger); }
+.card-label.yellow { color: var(--warn); }
+.card-label.green { color: var(--success); }
+
+/* Table */
+.table-wrap {
+  overflow-x: auto;
+  margin: 20px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: var(--surface);
+}
+th {
+  background: var(--surface-alt);
+  color: var(--text-sub);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 12px 14px;
+  text-align: right;
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+th:first-child { text-align: left; }
+td {
+  padding: 10px 14px;
+  text-align: right;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 13px;
+  color: var(--text-sub);
+}
+td:first-child {
+  text-align: left;
+  color: var(--text);
+  font-weight: 500;
+}
+.v-bad { color: var(--danger); font-weight: 700; }
+.v-good { color: var(--success); font-weight: 700; }
+.v-hl { color: var(--accent); font-weight: 700; }
+.v-warn { color: var(--warn); font-weight: 700; }
+
+/* Stat Grid */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+.stat-box {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 18px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.stat-val {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.stat-label { font-size: 12px; color: var(--text-dim); font-weight: 500; }
+.stat-box.danger .stat-val { color: var(--danger); }
+.stat-box.success .stat-val { color: var(--success); }
+.stat-box.warn .stat-val { color: var(--warn); }
+
+/* Flow */
+.flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+.flow-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.flow-arrow { color: var(--text-dim); font-size: 18px; }
+
+/* Quote */
+.quote {
+  border-left: 3px solid var(--accent);
+  padding: 14px 20px;
+  margin: 20px 0;
+  background: #f8faff;
+  border-radius: 0 8px 8px 0;
+}
+.quote p { font-size: 15px; color: var(--text); margin: 0; }
+.quote.warn { border-left-color: var(--warn); background: #fffbeb; }
+.quote.danger { border-left-color: var(--danger); background: var(--danger-bg); }
+
+/* Two Col */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+/* VS */
+.vs-wrap {
+  display: grid;
+  grid-template-columns: 1fr 48px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin: 20px 0;
+}
+.vs-center {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--text-dim);
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">LevelLab</div>
+    <div class="title">유저 스트레스 경향성 분석</div>
+  </div>
+  <div class="sidebar-nav" id="sidebarNav">
+    <div class="nav-item active" data-tab="tab0"><span class="num">01</span><span class="label">도입</span></div>
+    <div class="nav-item" data-tab="tab1"><span class="num">02</span><span class="label">관점 전환: Missing & Payoff</span></div>
+    <div class="nav-item" data-tab="tab2"><span class="num">03</span><span class="label">포기의 두 온도</span></div>
+    <div class="nav-item" data-tab="tab3"><span class="num">04</span><span class="label">소비의 무력감</span></div>
+    <div class="nav-item" data-tab="tab4"><span class="num">05</span><span class="label">체감 난이도 프록시</span></div>
+    <div class="nav-item" data-tab="tab5"><span class="num">06</span><span class="label">Core 유저 검증</span></div>
+    <div class="nav-item" data-tab="tab6"><span class="num">07</span><span class="label">교차 검증</span></div>
+    <div style="padding:12px 20px 4px;font-size:11px;font-weight:700;color:var(--warn);letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--border-light);margin-top:8px">Part 2 — Next Steps</div>
+    <div class="nav-item" data-tab="tab7"><span class="num">08</span><span class="label">실무적 가치</span></div>
+    <div class="nav-item" data-tab="tab8"><span class="num">09</span><span class="label">로드맵 & 임팩트</span></div>
+    <div class="nav-item" data-tab="tab9"><span class="num">10</span><span class="label">데이터 요청</span></div>
+    <div style="padding:12px 20px 4px;font-size:11px;font-weight:700;color:var(--success);letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--border-light);margin-top:8px">Part 3 — KPI</div>
+    <div class="nav-item" data-tab="tab10"><span class="num">11</span><span class="label">단기 KPI</span></div>
+    <div class="nav-item" data-tab="tab11"><span class="num">12</span><span class="label">중기 KPI</span></div>
+    <div class="nav-item" data-tab="tab12"><span class="num">13</span><span class="label">장기 KPI</span></div>
+  </div>
+  <div class="sidebar-footer">
+    base_dt 2026-03-15<br>
+    54 Hurdle Stages · Overall<br>
+    Cross-validated: GPT × Claude
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main" id="mainArea">
+
+<!-- ===== TAB 0: 도입 ===== -->
+<div class="tab-content active" id="tab0">
+  <div class="section-tag">01 — Introduction</div>
+  <h2>레벨 디자이너만 아는 것</h2>
+  <div class="divider"></div>
+
+  <div class="card" style="border-left:4px solid var(--text-dim)">
+    <div class="card-label" style="color:var(--text-dim)">분석 대상</div>
+    <p style="color:var(--text)">54개 허들 스테이지 (챕터당 5·10·15번) · overall 세그먼트 · base_dt 2026-03-15 · 스테이지 오픈 후 7일 집계</p>
+  </div>
+
+  <p>같은 난이도 등급의 스테이지라도, <strong>유저가 받는 스트레스는 다릅니다.</strong></p>
+  <p>보드 구성, 목표 배치, 턴 수 설계에 따라 체감 압박이 달라지는데, 기존 대시보드의 결과 지표(클리어율, 이탈률)로는 이 차이가 보이지 않습니다.</p>
+  <p>이것은 스테이지를 직접 설계하는 사람이기 때문에 가질 수 있었던 문제의식입니다.</p>
+
+  <div class="quote">
+    <p><strong>기존 분석은 결과 지표 중심이었습니다. 이번 분석은 "결과 이전의 상태"를 정량적으로 잡는 데 초점을 맞췄습니다.</strong></p>
+  </div>
+
+  <h3>현재 볼 수 있는 것들</h3>
+  <p>난이도(클리어율), 이탈률, 아이템/컨티뉴 사용량, GiveUp 비율 — 이것들은 모두 <strong>"결과"</strong>입니다. 유저가 떠난 뒤에야 알 수 있는 정보입니다.</p>
+  <p>이탈이 발생하기 <strong>전</strong>, 유저가 플레이 중에 겪는 압박의 성격과 강도를 볼 수 있는 지표가 필요했습니다.</p>
+
+  <div class="page-nav"><div></div><button class="primary" onclick="goTab('tab1')">다음: 관점 전환 →</button></div>
+</div>
+
+<!-- ===== TAB 1: 관점 전환 ===== -->
+<div class="tab-content" id="tab1">
+  <div class="section-tag">02 — Reframing</div>
+  <h2>두 가지 관점 전환</h2>
+  <div class="divider"></div>
+
+  <h3>전환 1: Missing = 스트레스 행동 시그널</h3>
+  <p>플레이 종료는 세 가지입니다.</p>
+  <div class="flow">
+    <div class="flow-item" style="border-color:var(--success);color:var(--success)">✓ 성공</div>
+    <div class="flow-arrow">|</div>
+    <div class="flow-item" style="border-color:var(--warn);color:var(--warn)">✗ 실패 (턴 소진)</div>
+    <div class="flow-arrow">|</div>
+    <div class="flow-item" style="border-color:var(--danger);color:var(--danger)">⊘ 포기 (자발적 종료)</div>
+  </div>
+  <p><strong>Missing</strong>은 start 로그는 있지만 end 로그가 없는 시도입니다. 기존에는 데이터 유실이나 기술적 이슈로 취급되었습니다.</p>
+  <p>하지만 우리 게임은 <strong>난이도가 상당히 높은 편</strong>이고, 유저가 플레이 중 스트레스가 폭발해서 앱을 강제종료하는 행동이 충분히 발생할 수 있습니다. Missing을 <strong>스트레스 행동 시그널</strong>로 재해석했습니다.</p>
+
+  <h3>전환 2: Payoff가 좋다 ≠ 건강한 스테이지</h3>
+  <div class="quote warn">
+    <p>초기 해석: "missing_rate는 높지만 아이템 클리어율, 컨티뉴 클리어율이 좋으니 나쁘지 않다"</p>
+  </div>
+  <div class="quote danger">
+    <p>전환된 관점: <strong>스트레스를 받아 강제종료하는 유저가 많은 스테이지에서, 아이템을 깰 때까지 계속 쓴다면 — payoff가 높은 건 당연한 것 아닌가?</strong></p>
+  </div>
+
+  <h3>검증: 컨티뉴 깊이별 비교</h3>
+  <p>평균 컨티뉴 사용 횟수를 4분위로 나눠 봤습니다.</p>
+  <div class="table-wrap">
+    <table>
+      <tr><th>지표</th><th>1~2회 수준</th><th>평균 수준</th><th>깊은 사용</th><th>극단적 사용</th></tr>
+      <tr><td>평균 컨티뉴 횟수</td><td>1.12</td><td>1.41</td><td>1.49</td><td class="v-warn">1.63</td></tr>
+      <tr><td>컨티뉴 클리어율</td><td>57.68%</td><td>78.11%</td><td>82.27%</td><td>79.59%</td></tr>
+      <tr><td>전체 클리어율</td><td>5.01%</td><td>5.35%</td><td>5.53%</td><td class="v-bad">3.89%</td></tr>
+      <tr><td>아이템 클리어율</td><td>24.11%</td><td>26.28%</td><td>27.77%</td><td class="v-bad">22.00%</td></tr>
+      <tr><td>Missing 비율</td><td>4.83%</td><td>5.30%</td><td>4.95%</td><td class="v-bad">6.01%</td></tr>
+      <tr><td>셔플 시도율</td><td>42.93%</td><td>38.50%</td><td>31.00%</td><td class="v-bad">52.61%</td></tr>
+    </table>
+  </div>
+  <div class="card danger">
+    <div class="card-label red">핵심 발견</div>
+    <p><strong>극단적 사용 그룹</strong>에서 컨티뉴 클리어율은 79.59%이지만, 전체 클리어율은 <strong>3.89%(최저)</strong>, 아이템 효율은 <strong>22.00%(최저)</strong>, Missing은 <strong>6.01%(최고)</strong>입니다.</p>
+    <p style="margin-top:10px">컨티뉴 클리어율이 높은 건 <strong>"깰 때까지 돈을 쏟은 구조적 결과"</strong>이지, 스테이지가 건강하다는 증거가 아닙니다.</p>
+  </div>
+
+  <div class="page-nav"><button onclick="goTab('tab0')">← 이전</button><button class="primary" onclick="goTab('tab2')">다음: 포기의 두 온도 →</button></div>
+</div>
+
+<!-- ===== TAB 2: 포기의 두 온도 ===== -->
+<div class="tab-content" id="tab2">
+  <div class="section-tag">03 — Finding 1</div>
+  <h2>포기에는 두 가지 온도가 있다</h2>
+  <div class="divider"></div>
+
+  <p>포기(자발적 종료)는 두 가지 경로로 갈립니다.</p>
+  <div class="two-col">
+    <div class="card" style="border-left:4px solid var(--cold)">
+      <div class="card-label blue">GiveUp — 차분한 포기</div>
+      <p style="font-size:16px;color:var(--text);margin-bottom:8px"><strong>"안 되겠다, 다시 하자"</strong></p>
+      <p>게임 내 포기 버튼을 눌러 정상적으로 종료합니다.</p>
+    </div>
+    <div class="card" style="border-left:4px solid var(--hot)">
+      <div class="card-label red">Missing — 격한 포기</div>
+      <p style="font-size:16px;color:var(--text);margin-bottom:8px"><strong>"못해먹겠다"</strong></p>
+      <p>스트레스가 폭발하여 앱 자체를 강제종료합니다.</p>
+    </div>
+  </div>
+
+  <div class="card accent">
+    <div class="card-label blue">분모 안내</div>
+    <p><strong>GiveUp_Rate_TotalAttempt_pct</strong>와 <strong>missing_Rate_pct</strong>는 분모가 동일합니다 (total_attempt_cnt). 따라서 합산이 가능하며, 합산값 = <strong>포기 총량</strong>, missing 비중 = <strong>포기의 온도</strong>가 됩니다.</p>
+  </div>
+
+  <h3>포기가 늘어날 때, 늘어나는 것은 차분한 포기다</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>포기 총량 분위</th><th>포기 총량</th><th>Missing</th><th>GiveUp</th><th>포기 온도 (Missing%)</th></tr>
+      <tr><td>포기 적음</td><td>18.59%</td><td>5.37%</td><td>13.21%</td><td class="v-warn">29.32%</td></tr>
+      <tr><td>보통 (하)</td><td>22.21%</td><td>4.85%</td><td>17.36%</td><td>21.84%</td></tr>
+      <tr><td>보통 (상)</td><td>24.77%</td><td>5.63%</td><td>19.14%</td><td>22.81%</td></tr>
+      <tr><td>포기 많음</td><td>29.02%</td><td>5.24%</td><td class="v-bad">23.78%</td><td>18.18%</td></tr>
+    </table>
+  </div>
+  <div class="card accent">
+    <div class="card-label blue">핵심 경향</div>
+    <p>포기 총량이 증가해도 <strong>Missing은 5% 내외로 안정적</strong>이고, <strong>GiveUp이 13→24%로 단조 증가</strong>합니다.</p>
+    <p style="margin-top:8px">Missing은 스트레스 임계를 넘어야 발생하는 <strong>임계 반응</strong>이고, GiveUp은 난이도에 따라 탄력적으로 늘어나는 <strong>연속 반응</strong>입니다.</p>
+  </div>
+
+  <div class="page-nav"><button onclick="goTab('tab1')">← 이전</button><button class="primary" onclick="goTab('tab3')">다음: 소비의 무력감 →</button></div>
+</div>
+
+<!-- ===== TAB 3: 소비의 무력감 ===== -->
+<div class="tab-content" id="tab3">
+  <div class="section-tag">04 — Finding 2</div>
+  <h2>포기의 온도를 결정하는 건<br>난이도가 아니라 소비의 무력감이다</h2>
+  <div class="divider"></div>
+
+  <div class="stat-grid">
+    <div class="stat-box">
+      <div class="stat-val">0.012</div>
+      <div class="stat-label">포기 온도 × 아이템전환율 상관</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val">0.033</div>
+      <div class="stat-label">포기 온도 × 셔플시도율 상관</div>
+    </div>
+  </div>
+  <p>포기의 온도(quit_heat_ratio)와 체감 난이도 프록시들의 상관은 <strong>사실상 0</strong>입니다. 난이도가 높다고 격하게 포기하는 게 아닙니다.</p>
+
+  <h3>포기 총량을 통제하고 온도만 비교하면?</h3>
+  <p>포기 총량이 비슷한 중간 50% 스테이지(26개) 내에서, 격한 포기 비중이 높은 쪽(HOT)과 낮은 쪽(COLD)을 비교했습니다.</p>
+
+  <div class="vs-wrap">
+    <div class="card" style="border-left:4px solid var(--hot);text-align:center">
+      <div class="card-label red">HOT (격한 포기)</div>
+      <p style="font-size:14px;color:var(--text);font-weight:700;margin:8px 0">아이템 클리어율</p>
+      <p style="font-size:28px;font-weight:700;color:var(--danger);margin:0">23.13%</p>
+      <p style="font-size:12px;color:var(--text-dim);margin-top:8px">셔플 44.65% · 전환 60.33%</p>
+    </div>
+    <div class="vs-center">VS</div>
+    <div class="card" style="border-left:4px solid var(--cold);text-align:center">
+      <div class="card-label blue">COLD (차분한 포기)</div>
+      <p style="font-size:14px;color:var(--text);font-weight:700;margin:8px 0">아이템 클리어율</p>
+      <p style="font-size:28px;font-weight:700;color:var(--accent);margin:0">27.70%</p>
+      <p style="font-size:12px;color:var(--text-dim);margin-top:8px">셔플 34.26% · 전환 54.14%</p>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>지표</th><th>HOT</th><th>COLD</th><th>차이</th></tr>
+      <tr><td>아이템 클리어율</td><td>23.13%</td><td>27.70%</td><td class="v-bad">-4.57pp</td></tr>
+      <tr><td>아이템 리프트</td><td>21.54%</td><td>25.21%</td><td class="v-bad">-3.67pp</td></tr>
+      <tr><td>셔플 시도율</td><td>44.65%</td><td>34.26%</td><td class="v-bad">+10.39pp</td></tr>
+      <tr><td>아이템 전환율</td><td>60.33%</td><td>54.14%</td><td class="v-bad">+6.20pp</td></tr>
+      <tr><td>아이템 장착 후 실패</td><td>1.01%</td><td>0.49%</td><td class="v-bad">+0.52pp</td></tr>
+    </table>
+  </div>
+
+  <div class="card danger">
+    <div class="card-label red">핵심 결론</div>
+    <p><strong>같은 양만큼 포기하더라도, 아이템이 안 먹히는 스테이지에서 유저가 격하게 포기합니다.</strong></p>
+    <p style="margin-top:8px">돈을 썼는데 안 되는 경험 — <strong>"소비의 무력감"</strong>이 격한 포기(Missing)를 만듭니다.</p>
+  </div>
+
+  <div class="page-nav"><button onclick="goTab('tab2')">← 이전</button><button class="primary" onclick="goTab('tab4')">다음: 체감 난이도 프록시 →</button></div>
+</div>
+
+<!-- ===== TAB 4: 체감 난이도 프록시 ===== -->
+<div class="tab-content" id="tab4">
+  <div class="section-tag">05 — Finding 3</div>
+  <h2>체감 난이도의 최강 프록시: 아이템 전환율</h2>
+  <div class="divider"></div>
+
+  <p><strong>no_item_to_item_switch_user_rate_pct</strong> — 아이템 없이 시작했다가 결국 아이템으로 전환한 유저 비율입니다. "버티다가 결국 아이템으로 타협한" 유저를 포착합니다.</p>
+
+  <div class="stat-grid">
+    <div class="stat-box">
+      <div class="stat-val">70.9%</div>
+      <div class="stat-label">전체 클리어율 분산 설명력 (R²)</div>
+    </div>
+  </div>
+
+  <p>이 지표 <strong>하나</strong>가 전체 클리어율 분산의 70.9%를 설명합니다.</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>지표</th><th>전환 낮음</th><th>보통 (하)</th><th>보통 (상)</th><th>전환 극심</th><th>방향</th></tr>
+      <tr><td>아이템 전환율</td><td>47.76%</td><td>55.29%</td><td>59.92%</td><td class="v-warn">66.22%</td><td></td></tr>
+      <tr><td>전체 클리어율</td><td class="v-good">6.99%</td><td>5.09%</td><td>4.51%</td><td class="v-bad">3.10%</td><td class="v-bad">▼ 단조하락</td></tr>
+      <tr><td>아이템 클리어율</td><td class="v-good">30.49%</td><td>25.96%</td><td>25.23%</td><td class="v-bad">18.27%</td><td class="v-bad">▼ 단조하락</td></tr>
+      <tr><td>Missing 비율</td><td>4.58%</td><td>5.41%</td><td>5.68%</td><td class="v-bad">5.47%</td><td class="v-bad">▲ 상승</td></tr>
+      <tr><td>GiveUp 비율</td><td>18.13%</td><td>17.50%</td><td>19.94%</td><td class="v-bad">21.89%</td><td class="v-bad">▲ 상승</td></tr>
+      <tr><td>셔플 시도율</td><td>30.06%</td><td>37.06%</td><td>44.20%</td><td class="v-bad">54.56%</td><td class="v-bad">▲ 단조상승</td></tr>
+      <tr><td>컨티뉴 유저 비율</td><td>20.60%</td><td>24.52%</td><td>22.92%</td><td class="v-bad">26.63%</td><td class="v-bad">▲ 상승</td></tr>
+    </table>
+  </div>
+
+  <div class="card accent">
+    <div class="card-label blue">핵심 결론</div>
+    <p>아이템 전환율이 올라갈수록 <strong>거의 모든 지표가 단조적으로 악화</strong>됩니다.</p>
+    <p style="margin-top:8px"><strong>"아이템 없이 시작했다가 결국 아이템을 쓰게 된다"는 행위 자체가 체감 난이도를 가장 잘 대변하는 지표</strong>입니다.</p>
+  </div>
+
+  <div class="page-nav"><button onclick="goTab('tab3')">← 이전</button><button class="primary" onclick="goTab('tab5')">다음: Core 유저 검증 →</button></div>
+</div>
+
+<!-- ===== TAB 5: Core 유저 검증 ===== -->
+<div class="tab-content" id="tab5">
+  <div class="section-tag">06 — Core User Validation</div>
+  <h2>Core 유저 데이터로 한 단계 더 검증</h2>
+  <div class="divider"></div>
+
+  <p>지금까지는 Overall(전체 유저) 기준이었습니다. <strong>아이템을 적극적으로 사용하는 Core 유저 코호트</strong>에서도 같은 패턴이 유지되는지 검증했습니다.</p>
+
+  <div class="card">
+    <div class="card-label blue">Core 코호트 정의</div>
+    <p><strong>Core_N</strong> = 조회 대상 허들 스테이지를 오픈 7일 이내에 전부 start했고, 그 중 N% 이상의 스테이지에서 아이템을 사용한 유저군</p>
+    <p style="margin-top:6px"><strong>Core_100</strong> = 모든 허들에서 아이템 사용. 전체의 약 <strong>2.87%</strong>에 해당하는 극소수 엘리트 스펜더.</p>
+  </div>
+
+  <h3>소비의 역설: 8배 더 써도 스트레스는 1.5배만 줄어든다</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>지표</th><th>Overall</th><th>Core 60</th><th>Core 80</th><th>Core 90</th><th>Core 100</th><th>배율</th></tr>
+      <tr><td>아이템 사용 비율</td><td>12.5%</td><td>20.2%</td><td>23.9%</td><td>28.9%</td><td class="v-warn">52.1%</td><td class="v-warn">×4.2</td></tr>
+      <tr><td>컨티뉴 사용 비율</td><td>1.5%</td><td>2.6%</td><td>3.5%</td><td>5.0%</td><td class="v-warn">12.6%</td><td class="v-warn">×8.4</td></tr>
+      <tr><td>전체 클리어율</td><td>4.9%</td><td>7.7%</td><td>8.9%</td><td>10.9%</td><td class="v-good">21.3%</td><td class="v-good">×4.3</td></tr>
+      <tr><td>노아이템 클리어율</td><td>2.07%</td><td>2.07%</td><td>1.75%</td><td>1.40%</td><td class="v-bad">0.73%</td><td class="v-bad">×0.35</td></tr>
+      <tr><td>Missing 비율</td><td>5.28%</td><td>4.46%</td><td>4.39%</td><td>4.33%</td><td>3.59%</td><td>×0.68</td></tr>
+      <tr><td>컨티뉴 깊이</td><td>1.41</td><td>1.40</td><td>1.43</td><td>1.48</td><td class="v-warn">1.66</td><td class="v-warn">↑ 심화</td></tr>
+    </table>
+  </div>
+
+  <div class="card danger">
+    <div class="card-label red">소비의 역설</div>
+    <p>소비를 <strong>8배</strong> 늘려도 Missing은 <strong>1.5배</strong>밖에 줄어들지 않습니다. 동시에 노아이템 클리어율은 2.07% → 0.73%로 <strong>오히려 떨어집니다.</strong></p>
+    <p style="margin-top:8px">Core 유저는 "더 잘하는 유저"가 아니라 <strong>"아이템에 의존하는 유저"</strong>입니다. 스트레스를 더 오래 감당하고 더 많이 비용으로 흡수할 뿐, 스트레스 자체가 사라지는 건 아닙니다.</p>
+  </div>
+
+  <h3>소비 저항 스테이지: 돈을 써도 스트레스가 안 줄어드는 곳</h3>
+  <p>54개 중 <strong>11개</strong>에서, Core_60의 Missing이 Overall보다 <strong>오히려 올라갑니다.</strong></p>
+
+  <div class="card danger">
+    <div class="card-label red">대표 사례: Stage 3820 (A)</div>
+    <div class="table-wrap" style="margin:12px 0 0">
+      <table>
+        <tr><th></th><th>Overall</th><th>Core 60</th><th>Core 80</th><th>Core 90</th><th>Core 100</th></tr>
+        <tr><td>Missing 비율</td><td>8.94%</td><td class="v-bad">9.22%</td><td class="v-bad">9.36%</td><td class="v-bad">9.53%</td><td>7.30%</td></tr>
+        <tr><td>전체 클리어율</td><td>5.28%</td><td>6.96%</td><td>8.55%</td><td>11.08%</td><td class="v-good">23.55%</td></tr>
+      </table>
+    </div>
+    <p style="margin-top:12px">돈을 더 쓰는 유저(Core 60→90)에서 <strong>오히려 Missing이 더 높아집니다.</strong></p>
+  </div>
+
+  <p>11개 소비 저항 스테이지의 포기 프로필:</p>
+  <div class="stat-grid">
+    <div class="stat-box">
+      <div class="stat-val" style="font-size:22px">20.12%</div>
+      <div class="stat-label">포기 총량 (비저항 24.56%)</div>
+    </div>
+    <div class="stat-box danger">
+      <div class="stat-val" style="font-size:22px">32.44%</div>
+      <div class="stat-label">포기 온도 (비저항 20.67%)</div>
+    </div>
+  </div>
+  <p>포기 총량은 오히려 <strong>낮은데</strong>, 온도는 <strong>압도적으로 뜨겁습니다.</strong> 차분하게 접지 않고, 돈 쓰면서 싸우다가 폭발하는 스테이지입니다.</p>
+
+  <div class="page-nav"><button onclick="goTab('tab4')">← 이전</button><button class="primary" onclick="goTab('tab6')">다음: 교차 검증 →</button></div>
+</div>
+
+<!-- ===== TAB 6: 교차 검증 ===== -->
+<div class="tab-content" id="tab6">
+  <div class="section-tag">07 — Cross Validation</div>
+  <h2>두 독립 모델의 교차 검증</h2>
+  <div class="divider"></div>
+
+  <p>이 분석은 <strong>ChatGPT PRO</strong>와 <strong>Claude</strong> 두 개의 독립 모델에게 동일한 데이터만 제공하고, <strong>서로의 분석 결과를 차단한 상태에서</strong> 독립적으로 가설 수립과 검증을 진행시켰습니다.</p>
+
+  <h3>분석 설계</h3>
+  <div class="flow">
+    <div class="flow-item" style="border-color:var(--accent)">동일 데이터 제공</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item" style="border-color:var(--warn)">결과 상호 차단</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item" style="border-color:var(--success)">독립 가설 수립 · 검증</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-item" style="border-color:var(--accent)">사후 대조</div>
+  </div>
+
+  <h3>독립 분석에서 일치한 핵심 경향성</h3>
+  <div class="card accent">
+    <div class="card-label blue">양쪽이 독립적으로 같은 방향에 도달한 발견</div>
+    <p style="margin-top:8px">✓ Missing의 행동 프로필 — 컨티뉴 깊이, 셔플 강도와 양의 상관</p>
+    <p>✓ GiveUp의 행동 프로필 — 소비 없이 접는 패턴, 컨티뉴 시도와 음의 상관</p>
+    <p>✓ 아이템 전환율이 체감 난이도의 최강 프록시</p>
+    <p>✓ Core 유저: 소비를 늘려도 Missing이 비례해서 줄지 않음</p>
+    <p>✓ Core_100 내부에서 스트레스를 결정하는 건 컨티뉴 깊이</p>
+    <p>✓ 아이템 포트폴리오 전문화 (대중형 → 전술형)</p>
+    <p>✓ 소비 저항 스테이지의 존재</p>
+  </div>
+
+  <h3>수치 전수 검산</h3>
+  <div class="stat-grid">
+    <div class="stat-box success">
+      <div class="stat-val">15/15</div>
+      <div class="stat-label">상관계수 일치</div>
+    </div>
+    <div class="stat-box success">
+      <div class="stat-val">26/26</div>
+      <div class="stat-label">상하위 25% 비교 일치</div>
+    </div>
+    <div class="stat-box success">
+      <div class="stat-val">10/10</div>
+      <div class="stat-label">Stage 사례 수치 일치</div>
+    </div>
+  </div>
+
+  <p>사후 교차검산에서 상관계수 15개, 상하위 25% 비교 26개를 전수 대조했고, 10개 Stage에 대해 각 5개 이상 지표를 대조하여 총 50개 이상 수치가 소수점 2자리까지 <strong>전수 일치</strong>했습니다.</p>
+
+  <div class="card" style="margin-top:32px">
+    <div class="card-label blue">분석 요약</div>
+    <p style="color:var(--text)">레벨 디자이너의 도메인 지식에서 출발하여 missing을 스트레스 시그널로 재해석하고, 독립된 두 모델로 교차 검증까지 완료한 분석입니다.</p>
+    <p style="margin-top:8px;color:var(--text)"><strong>결과 이전의 유저 상태를 정량적으로 포착하고, 이를 통해 스테이지별 스트레스 성격을 구분할 수 있는 프레임워크</strong>를 제시합니다.</p>
+  </div>
+
+  <div class="page-nav"><button onclick="goTab('tab5')">← 이전</button><button class="primary" onclick="goTab('tab7')">Part 2: 실무적 가치 →</button></div>
+</div>
+
+<!-- ===== TAB 7: 실무적 가치 ===== -->
+<div class="tab-content" id="tab7">
+  <div class="section-tag">08 — Practical Value</div>
+  <h2>이 발견으로 지금 당장 할 수 있는 것</h2>
+  <div class="divider"></div>
+
+  <p>지금까지의 분석은 stage-level overall 데이터로 <strong>"어떤 스테이지가 유저에게 어떤 종류의 스트레스를 주는가"</strong>를 파악한 것입니다. 이것만으로도 이미 실무적으로 활용할 수 있는 것이 있습니다.</p>
+
+  <h3>1. 포기 4유형 분류를 활용한 빠른 진단</h3>
+  <div class="card accent">
+    <p>신규 챕터 오픈 후, 허들 스테이지가 아래 4유형 중 어디에 해당하는지를 <strong>빠르게 진단</strong>할 수 있습니다.</p>
+    <div class="table-wrap" style="margin-top:12px">
+      <table>
+        <tr><th>유형</th><th>포기 총량</th><th>포기 온도</th><th>성격</th><th>대응 방향</th></tr>
+        <tr><td style="font-weight:700;color:var(--danger)">🔴 위험</td><td>높음</td><td>높음</td><td>소비하며 싸우다 폭발</td><td class="v-bad">즉시 수정 우선순위</td></tr>
+        <tr><td style="font-weight:700;color:var(--warn)">🟡 주의</td><td>높음</td><td>낮음</td><td>소비 없이 조용히 이탈</td><td>소비 유인 구조 점검</td></tr>
+        <tr><td style="font-weight:700;color:var(--text-dim)">🟠 경계</td><td>낮음</td><td>높음</td><td>일부 유저에게 강한 좌절</td><td>특정 구간 압박 완화</td></tr>
+        <tr><td style="font-weight:700;color:var(--success)">🟢 정상</td><td>낮음</td><td>낮음</td><td>가장 건강한 유형</td><td>현 상태 유지</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h3>2. 아이템 전환율을 모니터링에 추가</h3>
+  <p>아이템 전환율이 체감 난이도를 <strong>70.9%</strong> 설명한다는 것은, 기존 클리어율 중심의 난이도 판단에 이 지표를 추가하면 모니터링 정밀도가 올라간다는 뜻입니다. 클리어율만으로는 구분되지 않는 스테이지의 체감 압박 차이를 잡아낼 수 있습니다.</p>
+
+  <h3>3. 스테이지 구조와의 연결 가능성</h3>
+  <p>향후 스트레스 지표 프로필과 실제 스테이지 구조(보드 구성, 목표 배치, 턴 설계)를 매칭하는 분석이 추가되면, 설계 단계에서의 <strong>사전 진단 가능성</strong>도 열립니다.</p>
+  <div class="card warn">
+    <div class="card-label yellow">참고</div>
+    <p>이 연결은 레벨 디자이너이기 때문에 할 수 있는 부분이지만, 아직 구조 분석을 진행하지 않았으므로 현재는 <strong>가능성 단계</strong>입니다.</p>
+  </div>
+
+  <div class="page-nav"><button onclick="goTab('tab6')">← 이전</button><button class="primary" onclick="goTab('tab8')">다음: 로드맵 →</button></div>
+</div>
+
+<!-- ===== TAB 8: 로드맵 & 임팩트 ===== -->
+<div class="tab-content" id="tab8">
+  <div class="section-tag">09 — Roadmap & Impact</div>
+  <h2>다음 단계: 스트레스 누적 → 이탈 예측</h2>
+  <div class="divider"></div>
+
+  <p>스트레스는 한 스테이지에서 바로 이탈로 이어지지 않습니다. <strong>누적되다가 터지는 것</strong>입니다. 단순히 이탈률 하나만 보면 되는 거였으면 이 분석 자체가 필요 없었을 것입니다.</p>
+
+  <h3>3단계 로드맵</h3>
+
+  <div class="card" style="border-left:4px solid var(--success)">
+    <div class="card-label green">Step 1 — 스트레스 스코어링 수식 구체화</div>
+    <p>현재 발견된 지표들(Missing 비중, 아이템 전환율, 셔플 강도, 컨티뉴 깊이, item_from_start_no_clear 등)의 가중치를 설계하여 <strong>스테이지별 스트레스 점수</strong>를 산출하는 수식을 만듭니다.</p>
+    <p style="margin-top:8px"><strong>→ 현재 가진 데이터로 바로 시작할 수 있습니다.</strong></p>
+  </div>
+
+  <div class="card accent">
+    <div class="card-label blue">Step 2 — 이탈 지표와의 상관 탐색</div>
+    <p>스테이지별 스트레스 점수가 있으면, 해당 구간의 이탈률과의 상관을 세 가지 방향으로 탐색합니다.</p>
+    <div style="margin-top:12px">
+      <div class="table-wrap">
+        <table>
+          <tr><th>분석 방향</th><th>설명</th></tr>
+          <tr><td>허들 사이클 단위</td><td>5개 스테이지(허들 사이클) 구간 스트레스 합산이 n점 이상일 때의 이탈 패턴</td></tr>
+          <tr><td>연속 스트레스</td><td>연속 x개 이상 스테이지에서 일정 수준 이상의 스트레스가 관측될 때의 이탈 패턴</td></tr>
+          <tr><td>챕터 단위</td><td>1챕터(15스테이지) 단위 누적 스트레스와 이탈의 관계</td></tr>
+        </table>
+      </div>
+    </div>
+    <p style="margin-top:8px"><strong>→ 기존 stage-level overall 데이터에 이탈 지표가 추가된 형태가 필요합니다.</strong></p>
+  </div>
+
+  <div class="card" style="border-left:4px solid var(--accent)">
+    <div class="card-label blue">Step 3 — 모니터링 자동화</div>
+    <p>Step 2에서 유의미한 임계값이 나오면, 신규 챕터 오픈 시 <strong>자동으로 위험 구간을 잡아내는 모니터링 시스템</strong>을 설계합니다.</p>
+  </div>
+
+  <h3 style="margin-top:48px">왜 지금 이것이 중요한가</h3>
+  <div class="card danger">
+    <div class="card-label red">비즈니스 임팩트</div>
+    <p>포코포코는 12년간 서비스해왔고, <strong>앞으로 10년 이상 더 서비스를 이어갈 게임</strong>입니다.</p>
+    <p style="margin-top:8px">장기 라이브 서비스에서 가장 중요한 것은 유저가 떠난 뒤에 원인을 찾는 게 아니라, <strong>떠나기 전에 위험 신호를 잡는 것</strong>입니다.</p>
+    <p style="margin-top:8px">지금까지 우리는 결과 지표(이탈률, 클리어율)를 보고 사후에 대응해왔습니다. 하지만 이탈은 스트레스가 이미 터진 뒤의 결과이기 때문에, 이탈률을 보고 수정하면 <strong>이미 떠난 유저는 돌아오지 않습니다.</strong></p>
+    <p style="margin-top:8px">스트레스 누적의 프록시가 확보되면, 이탈이 터지기 전에 위험 구간을 감지하는 <strong>조기 경보 시스템</strong>을 설계할 수 있습니다. 이것은 일회성 분석이 아니라, <strong>앞으로 10년 이상의 라이브 서비스를 지탱할 운영 인프라의 기반</strong>이 됩니다.</p>
+  </div>
+
+  <div class="page-nav"><button onclick="goTab('tab7')">← 이전</button><button class="primary" onclick="goTab('tab9')">다음: 데이터 요청 →</button></div>
+</div>
+
+<!-- ===== TAB 9: 데이터 요청 ===== -->
+<div class="tab-content" id="tab9">
+  <div class="section-tag">10 — Data Request</div>
+  <h2>다음 단계를 위해 필요한 데이터</h2>
+  <div class="divider"></div>
+
+  <h3>Step 1을 위해 (즉시 시작 가능)</h3>
+  <div class="card accent">
+    <div class="card-label blue">요청 1: 스테이지 범위 확장</div>
+    <p>현재 분석은 허들 스테이지(5, 10, 15번) 54개로 진행했습니다. 스코어링 수식의 범용성을 검증하려면 <strong>Mid-hurdle(3, 8, 13번)과 일반 스테이지까지 포함된 데이터</strong>가 필요합니다.</p>
+    <p style="margin-top:8px">같은 지표 구성, 같은 overall 기준으로 범위만 확장된 형태면 됩니다.</p>
+  </div>
+
+  <h3>Step 2를 위해</h3>
+  <div class="card accent">
+    <div class="card-label blue">요청 2: 이탈 지표 포함</div>
+    <p>기존 stage-level overall 데이터에 <strong>해당 스테이지 구간에서의 이탈 관련 지표</strong>가 추가된 형태가 필요합니다.</p>
+    <p style="margin-top:8px">이 데이터가 있으면 스테이지별 스트레스 점수를 구간 단위로 누적시켜, <strong>"어떤 누적 패턴에서 이탈이 발생하는가"</strong>를 크게 먼저 볼 수 있습니다.</p>
+    <p style="margin-top:8px">유의미한 패턴이 확인되면, 이후 유저 레벨로 디테일을 파고드는 추가 분석을 진행합니다.</p>
+  </div>
+
+  <div class="page-nav"><button onclick="goTab('tab8')">← 이전</button><button class="primary" onclick="goTab('tab10')">다음: 단기 KPI →</button></div>
+</div>
+
+<!-- ===== TAB 10: 단기 KPI ===== -->
+<div class="tab-content" id="tab10">
+  <div class="section-tag">11 — Short-term KPI</div>
+  <h2>단기 KPI: 위험 스테이지 유형 관리</h2>
+  <div class="divider"></div>
+
+  <p>스트레스 경향성은 이미 식별되었고, 이것으로 스테이지 진단이 가능합니다. <strong>지금 바로 측정하고 관리할 수 있는 KPI</strong>입니다.</p>
+
+  <h3>KPI 1: 🔴 위험 유형 스테이지 수 → 0개 유지</h3>
+  <div class="card danger">
+    <div class="card-label red">현재 상태</div>
+    <div class="stat-grid" style="margin-top:12px">
+      <div class="stat-box danger">
+        <div class="stat-val">8개</div>
+        <div class="stat-label">54개 중 🔴 위험 해당</div>
+      </div>
+      <div class="stat-box warn">
+        <div class="stat-val">14.8%</div>
+        <div class="stat-label">전체 허들 대비 비율</div>
+      </div>
+    </div>
+    <p style="margin-top:12px">포기 총량이 높으면서 격한 포기 비중도 높은, <strong>가장 위험한 유형</strong>입니다. 유저가 돈 쓰면서 싸우다가 폭발하는 스테이지입니다.</p>
+  </div>
+
+  <div class="card success">
+    <div class="card-label green">목표</div>
+    <p>신규 챕터 오픈 시, 허들 스테이지가 🔴 위험 유형에 해당하는 경우 수정을 통해 <strong>0개로 전환</strong>합니다.</p>
+    <p style="margin-top:8px">측정 방법: 오픈 후 7일 데이터 기준으로 포기 총량과 포기 온도를 계산하여 4유형 분류 적용.</p>
+  </div>
+
+  <h3>KPI 2: 아이템 소비 가치 보장 — 아이템 클리어율 관리</h3>
+  <div class="card warn">
+    <div class="card-label yellow">현재 상태</div>
+    <div class="stat-grid" style="margin-top:12px">
+      <div class="stat-box warn">
+        <div class="stat-val">14개</div>
+        <div class="stat-label">아이템 클리어율 하위 25% 스테이지</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val">24.96%</div>
+        <div class="stat-label">전체 평균 아이템 클리어율</div>
+      </div>
+    </div>
+    <p style="margin-top:12px">유저가 아이템을 사용했는데 클리어율이 하위 25%인 스테이지가 14개입니다. 이 스테이지에서는 <strong>유저가 돈을 썼는데 성과가 안 나오는 경험</strong>이 반복됩니다.</p>
+    <p style="margin-top:8px">아이템을 쓰면 성과가 나야 다음에도 쓰게 됩니다. <strong>아이템의 체감 가치를 보장하는 것</strong>이 장기 소비 건강성의 핵심입니다.</p>
+  </div>
+
+  <h3>검증 방법</h3>
+  <div class="card accent">
+    <div class="card-label blue">빠른 실험 가능</div>
+    <p>🔴 위험 유형 스테이지를 수정하여 유형을 전환시킨 뒤, <strong>전후 비교를 1~2개 챕터만 진행</strong>하면 수정 효과의 구체적 수치가 나옵니다.</p>
+    <p style="margin-top:8px">이 실험은 추가 데이터 요청 없이 <strong>지금 바로 실행할 수 있습니다.</strong></p>
+  </div>
+
+  <div class="page-nav"><button onclick="goTab('tab9')">← 이전</button><button class="primary" onclick="goTab('tab11')">다음: 중기 KPI →</button></div>
+</div>
+
+<!-- ===== TAB 11: 중기 KPI ===== -->
+<div class="tab-content" id="tab11">
+  <div class="section-tag">12 — Mid-term KPI</div>
+  <h2>중기 KPI: 스트레스 점수 기반 위험 관리</h2>
+  <div class="divider"></div>
+
+  <p>Step 1(스트레스 스코어링 수식 구체화)이 완료되면 설정 가능한 KPI입니다.</p>
+
+  <h3>KPI 3: 위험 스트레스 점수 스테이지 비율 관리</h3>
+  <div class="card accent">
+    <div class="card-label blue">구조</div>
+    <p>현재 발견된 지표들(Missing 비중, 아이템 전환율, 셔플 강도, 컨티뉴 깊이, item_from_start_no_clear 등)에 가중치를 설정하여 <strong>스테이지별 스트레스 점수</strong>를 산출합니다.</p>
+    <p style="margin-top:12px">이 점수가 일정 임계값을 넘는 스테이지의 비율을 관리합니다.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>항목</th><th>내용</th></tr>
+      <tr><td>입력</td><td>Missing 비중, 아이템 전환율, 셔플 강도, 컨티뉴 깊이, item_from_start_no_clear 등</td></tr>
+      <tr><td>출력</td><td>스테이지별 스트레스 점수 (단일 수치)</td></tr>
+      <tr><td>임계값</td><td>스코어링 수식 완성 후 데이터 기반으로 설정</td></tr>
+      <tr><td>KPI</td><td>챕터 내 임계값 초과 스테이지 수 ≤ n개</td></tr>
+      <tr><td>적용 시점</td><td>Step 1 완료 후 (현재 데이터로 시작 가능)</td></tr>
+    </table>
+  </div>
+
+  <div class="card warn">
+    <div class="card-label yellow">참고</div>
+    <p>구체적 임계값은 수식이 완성된 뒤 데이터 분포를 보고 설정합니다. 지금 임의의 숫자를 제시하는 것은 적절하지 않습니다.</p>
+    <p style="margin-top:8px">다만, 수식의 <strong>구성 요소(어떤 지표가 들어가는지)와 방향(높을수록 위험인지 낮을수록 위험인지)</strong>은 이미 이번 분석에서 확인되었습니다.</p>
+  </div>
+
+  <h3>범용성 검증이 필요한 이유</h3>
+  <p>현재 수식 후보는 허들 스테이지(5, 10, 15번) 기준입니다. 이것이 Mid-hurdle이나 일반 스테이지에서도 같은 설명력을 가지는지 확인해야 하며, 이를 위해 <strong>스테이지 범위가 확장된 데이터(요청 1)</strong>가 필요합니다.</p>
+
+  <div class="page-nav"><button onclick="goTab('tab10')">← 이전</button><button class="primary" onclick="goTab('tab12')">다음: 장기 KPI →</button></div>
+</div>
+
+<!-- ===== TAB 12: 장기 KPI ===== -->
+<div class="tab-content" id="tab12">
+  <div class="section-tag">13 — Long-term KPI</div>
+  <h2>장기 KPI: 이탈 예측 기반 조기 경보</h2>
+  <div class="divider"></div>
+
+  <p>Step 2(이탈 지표와의 상관 검증)가 완료되면 설정 가능한 KPI입니다.</p>
+
+  <h3>KPI 4: 스트레스 누적 기반 이탈 위험 구간 관리</h3>
+  <div class="card accent">
+    <div class="card-label blue">구조</div>
+    <p>스테이지별 스트레스 점수를 구간 단위로 누적하여, <strong>"이 수준의 누적 스트레스에서 이탈 확률이 유의미하게 올라간다"</strong>는 임계값을 찾습니다.</p>
+    <p style="margin-top:12px">이 임계값이 확인되면, 신규 챕터 오픈 시 해당 구간에 도달하기 전에 자동으로 경고하는 <strong>조기 경보 시스템</strong>을 설계할 수 있습니다.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>항목</th><th>내용</th></tr>
+      <tr><td>전제</td><td>Step 2에서 스트레스 누적과 이탈 사이에 유의미한 상관이 검증되어야 함</td></tr>
+      <tr><td>KPI</td><td>특정 구간의 이탈률 자체를 목표 수치로 설정 가능</td></tr>
+      <tr><td>적용 시점</td><td>Step 2 완료 후</td></tr>
+    </table>
+  </div>
+
+  <div class="card warn">
+    <div class="card-label yellow">현재 상태</div>
+    <p>스트레스 경향성 자체는 이미 식별되었고, 이것으로 <strong>스테이지 진단</strong>이 가능합니다.</p>
+    <p style="margin-top:8px">이탈과의 상관은 아직 검증 전이므로, 이탈률 목표 수치를 <strong>지금 단정하는 것은 적절하지 않습니다.</strong></p>
+    <p style="margin-top:8px">다만, 이 검증을 위해 필요한 것은 <strong>기존 데이터에 이탈 지표를 추가하는 것(요청 2)</strong>이며, 이것이 확보되면 검증을 시작할 수 있습니다.</p>
+  </div>
+
+  <h3>단계별 KPI 요약</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>구분</th><th>KPI</th><th>측정 가능 시점</th><th>현재 상태</th></tr>
+      <tr>
+        <td style="font-weight:700;color:var(--success)">단기</td>
+        <td>🔴 위험 유형 0개 유지<br>아이템 클리어율 하위 스테이지 수 관리</td>
+        <td class="v-good">지금 바로</td>
+        <td>8개 / 14개 해당</td>
+      </tr>
+      <tr>
+        <td style="font-weight:700;color:var(--accent)">중기</td>
+        <td>스트레스 점수 임계 초과 스테이지 비율</td>
+        <td>Step 1 완료 후</td>
+        <td>수식 구성요소 확인됨, 가중치 설계 필요</td>
+      </tr>
+      <tr>
+        <td style="font-weight:700;color:var(--warn)">장기</td>
+        <td>이탈률 목표 수치</td>
+        <td>Step 2 완료 후</td>
+        <td>이탈 지표 데이터 필요</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card" style="margin-top:32px;border-left:4px solid var(--accent)">
+    <div class="card-label blue">정리</div>
+    <p style="color:var(--text)">말할 수 있는 숫자는 정확하게 제시했습니다. 아직 말할 수 없는 숫자는, 그것을 알아내는 것이 바로 다음 단계입니다.</p>
+  </div>
+
+  <div class="page-nav"><button onclick="goTab('tab11')">← 이전</button><div></div></div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+function goTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector(`[data-tab="${id}"]`).classList.add('active');
+  document.getElementById('mainArea').scrollTop = 0;
+}
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => goTab(item.dataset.tab));
+});
+</script>
+</body>
+</html>
